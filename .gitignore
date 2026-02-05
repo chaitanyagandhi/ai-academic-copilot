@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# App data (we'll add these later, but safe now)
+data/uploads/
+data/indices/
