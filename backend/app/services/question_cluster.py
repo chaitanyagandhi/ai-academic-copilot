@@ -62,14 +62,19 @@ def cluster_questions(questions: List[dict]) -> Dict[str, Any]:
         top_idx = center.argsort()[::-1][:6]
         keywords = [feature_names[i] for i in top_idx if center[i] > 0]
 
+        avg_confusion = sum(
+            q.get("confusion", 0.0) for q in grouped[cid]
+        ) / max(len(grouped[cid]), 1)
+
         clusters_out.append({
             "cluster_id": cid,
             "keywords": keywords,
             "count": len(grouped[cid]),
+            "avg_confusion": round(avg_confusion, 3),
             "questions": grouped[cid],
         })
 
     # Sort clusters by size desc (nice for dashboard)
-    clusters_out.sort(key=lambda c: c["count"], reverse=True)
+    clusters_out.sort(key=lambda c: c["avg_confusion"], reverse=True)
 
     return {"k": k, "clusters": clusters_out}
