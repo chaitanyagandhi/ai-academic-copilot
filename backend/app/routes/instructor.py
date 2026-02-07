@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 from app.services.question_log import get_questions
 from app.services.question_cluster import cluster_questions
+from app.services.confusion_trend import compute_confusion_trend
+
 
 
 router = APIRouter()
@@ -30,4 +32,14 @@ def get_question_clusters(course_id: str):
         "total_questions": len(qs),
         **result
     }
+
+@router.get("/confusion_trend")
+def get_confusion_trend(course_id: str):
+    qs = get_questions(course_id)
+    trend = compute_confusion_trend(qs)
+    return {
+        "course_id": course_id,
+        "points": trend
+    }
+
 

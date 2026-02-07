@@ -74,6 +74,31 @@ st.pyplot(fig2)
 st.markdown("## 🧠 Cluster Summary Table")
 st.dataframe(df, use_container_width=True)
 
+st.markdown("## ⏱️ Confusion Over Time")
+
+trend_resp = requests.get(
+    f"{API_BASE}/instructor/confusion_trend",
+    params={"course_id": course_id}
+)
+
+if trend_resp.status_code == 200:
+    trend_data = trend_resp.json().get("points", [])
+    if trend_data:
+        tdf = pd.DataFrame(trend_data)
+        tdf["time"] = pd.to_datetime(tdf["time"])
+
+        fig3, ax3 = plt.subplots()
+        ax3.plot(tdf["time"], tdf["avg_confusion"], marker="o")
+        ax3.set_ylabel("Average confusion")
+        ax3.set_xlabel("Time")
+        ax3.set_ylim(0, 1)
+        st.pyplot(fig3)
+    else:
+        st.info("Not enough data yet to show confusion trend.")
+else:
+    st.warning("Failed to load confusion trend.")
+
+
 
 # Display clusters
 for idx, cluster in enumerate(clusters, start=1):

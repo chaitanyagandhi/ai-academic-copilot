@@ -26,18 +26,25 @@ def cluster_questions(questions: List[dict]) -> Dict[str, Any]:
 
     if n == 0:
         return {"k": 0, "clusters": []}
+    
     if n < 6:
-        # Not enough data: return one cluster
+        avg_confusion = 0.0
+        if questions:
+            avg_confusion = sum(q.get("confusion", 0.0) for q in questions) / len(questions)
+
         return {
             "k": 1,
             "clusters": [
                 {
                     "cluster_id": 0,
                     "keywords": [],
+                    "count": len(questions),
+                    "avg_confusion": round(avg_confusion, 3),
                     "questions": questions
                 }
             ],
         }
+
 
     k = _choose_k(n)
 
