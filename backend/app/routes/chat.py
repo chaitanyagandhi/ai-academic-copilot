@@ -6,6 +6,8 @@ from app.services.store import course_store
 from app.services.llm import generate_answer_with_openai
 from app.services.citation_guard import needs_fix, all_citations_valid
 from app.services.llm import generate_answer_with_openai, fix_citations_with_openai
+from app.services.question_log import log_question
+
 
 
 
@@ -67,6 +69,7 @@ def synthesize_answer(question: str, contexts: List[str], mode: str) -> str:
 
 @router.post("/", response_model=ChatResponse)
 def chat(req: ChatRequest):
+    log_question(req.course_id, req.user_id, req.message)
     hits = course_store.search(req.course_id, req.message, k=5)
     allowed_ids = {h.chunk_id for h in hits}
 
