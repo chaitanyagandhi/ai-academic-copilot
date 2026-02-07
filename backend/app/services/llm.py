@@ -61,3 +61,49 @@ def generate_answer_with_openai(question: str, contexts: List[str], mode: str) -
     )
 
     return resp.choices[0].message.content
+
+def fix_citations_with_openai(original_answer: str, contexts: List[str]) -> Optional[str]:
+    """
+    Ask the LLM to rewrite the answer so that every sentence has valid citations.
+    Returns None if OpenAI not configured.
+    """
+    if not has_openai_key():
+        return None
+
+    try:
+        from openai import OpenAI
+    except Exception:
+        return None
+
+    try:
+        client = OpenAI()
+    except Exception:
+        return None
+
+    context_block = "\n\n".join(contexts[:4])
+
+    system = (
+        "You are a strict editor.\n"
+        "Rewrite the answer so that EVERY sentence includes an inline citation in this exact format: [source_name | chunk_id].\n"
+        "You MUST ONLY use citations that appear in the provided COURSE CONTEXT labels.\n"
+        "Do not introduce any new facts that aren't supported by the context.\n"
+        "Keep the meaning the same but make it properly cited."
+    )
+
+    user = (
+        f"COURSE CONTEXT (with allowed citation labels):\n{context_block}\n\n"
+        f"ORIGINAL ANSWER:\n{original_answer}\n\n"
+        "Return ONLY the corrected answer text."
+    )
+
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        temperature=0.0,
+    )
+
+    return resp.choices[0].message.content
+

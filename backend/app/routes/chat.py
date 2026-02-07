@@ -4,6 +4,9 @@ from typing import List, Literal, Optional
 
 from app.services.store import course_store
 from app.services.llm import generate_answer_with_openai
+from app.services.citation_guard import needs_fix, all_citations_valid
+from app.services.llm import generate_answer_with_openai, fix_citations_with_openai
+
 
 
 router = APIRouter()
@@ -65,6 +68,8 @@ def synthesize_answer(question: str, contexts: List[str], mode: str) -> str:
 @router.post("/", response_model=ChatResponse)
 def chat(req: ChatRequest):
     hits = course_store.search(req.course_id, req.message, k=5)
+    allowed_ids = {h.chunk_id for h in hits}
+
 
     citations = [
         Citation(
@@ -76,16 +81,30 @@ def chat(req: ChatRequest):
     ]
 
     contexts = [
-    f"[{h.source_name} | {h.chunk_id}]\n{h.text}"
-    for h in hits
+        f"[{h.source_name} | {h.chunk_id}]\n{h.text}"
+        for h in hits
     ]
+
     llm_answer = generate_answer_with_openai(req.message, contexts, req.mode)
+
+    # If LLM is enabled, enforce citation rules
     if llm_answer is not None:
-        answer = llm_answer
-        note = "LLM enabled: RAG (retrieve + generate)"
+        if needs_fix(llm_answer, allowed_ids):
+            repaired = fix_citations_with_openai(llm_answer, contexts)
+            if repaired is not None and all_citations_valid(repaired, allowed_ids):
+                answer = repaired
+                note = "LLM enabled: answer repaired to enforce valid citations"
+            else:
+                # fallback
+                answer = synthesize_answer(req.message, [h.text for h in hits], req.mode)
+                note = "LLM enabled but citation validation failed: fallback used"
+        else:
+            answer = llm_answer
+            note = "LLM enabled: RAG (retrieve + generate)"
     else:
-        answer = synthesize_answer(req.message, contexts, req.mode)
+        answer = synthesize_answer(req.message, [h.text for h in hits], req.mode)
         note = "LLM not configured: retrieval + template fallback"
+
 
     return ChatResponse(
         answer=answer,
