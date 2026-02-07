@@ -24,12 +24,15 @@ def generate_answer_with_openai(question: str, contexts: List[str], mode: str) -
     context_block = "\n\n".join(contexts[:4])
 
     system = (
-    "You are an academic tutor. Answer the student's question using ONLY the provided course context.\n"
-    "Every factual statement MUST be supported by a citation.\n"
-    "Use inline citations in this exact format: [source_name | chunk_id].\n"
-    "If the answer is not present in the context, say you don't have enough information "
-    "and suggest what additional lecture content should be ingested."
+    "You are an academic tutor.\n"
+    "Use ONLY the provided COURSE CONTEXT.\n"
+    "Every claim MUST include an inline citation in this exact format: [source_name | chunk_id].\n"
+    "If the context does not contain the answer, say: "
+    "'I don't have enough information in the course content to answer that.' "
+    "Then suggest what content to ingest (slides/pages/lecture transcript) that would help.\n"
+    "Do NOT cite anything that is not in the context."
     )
+
 
 
     if mode == "simple":
@@ -39,12 +42,13 @@ def generate_answer_with_openai(question: str, contexts: List[str], mode: str) -
     else:
         style = "Be clear and structured. Give an intuitive explanation and a concrete example if possible."
 
-        user = (
-        f"COURSE CONTEXT:\n{context_block}\n\n"
-        f"STUDENT QUESTION:\n{question}\n\n"
-        f"INSTRUCTIONS:\n{style}\n\n"
-        "Remember: include citations after each explanation."
+    user = (
+    f"COURSE CONTEXT:\n{context_block}\n\n"
+    f"STUDENT QUESTION:\n{question}\n\n"
+    f"INSTRUCTIONS:\n{style}\n\n"
+    "Important: Put citations at the end of each sentence that depends on the context.\n"
     )
+
 
 
     resp = client.chat.completions.create(

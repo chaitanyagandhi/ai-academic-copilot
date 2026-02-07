@@ -9,6 +9,9 @@ backend/.env
 env/
 venv/
 
+backend/data/uploads/
+
+
 # OS / editor
 .DS_Store
 .vscode/
