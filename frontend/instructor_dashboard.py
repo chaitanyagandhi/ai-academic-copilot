@@ -17,14 +17,20 @@ st.caption("Question clustering and confusion heatmap")
 # Sidebar inputs
 st.sidebar.header("Course Settings")
 course_id = st.sidebar.text_input("Course ID", value="csci_demo")
+lecture_id = st.sidebar.text_input("Lecture ID (optional)", value="")
+lecture_id = lecture_id.strip() or None
 
 if st.sidebar.button("Refresh data"):
     st.rerun()
 
 # Fetch clusters
+base_params = {"course_id": course_id}
+if lecture_id:
+    base_params["lecture_id"] = lecture_id
+
 resp = requests.get(
     f"{API_BASE}/instructor/clusters",
-    params={"course_id": course_id}
+    params=base_params
 )
 
 if resp.status_code != 200:
@@ -78,7 +84,7 @@ st.markdown("## ⏱️ Confusion Over Time")
 
 trend_resp = requests.get(
     f"{API_BASE}/instructor/confusion_trend",
-    params={"course_id": course_id}
+    params=base_params
 )
 
 if trend_resp.status_code == 200:
@@ -98,6 +104,39 @@ if trend_resp.status_code == 200:
 else:
     st.warning("Failed to load confusion trend.")
 
+st.markdown("## 🚨 Alerts")
+alerts_resp = requests.get(
+    f"{API_BASE}/instructor/alerts",
+    params=base_params
+)
+if alerts_resp.status_code == 200:
+    alerts_data = alerts_resp.json()
+    current_alerts = alerts_data.get("alerts", [])
+    history = alerts_data.get("history", [])
+
+    if current_alerts:
+        for a in current_alerts:
+            st.error(f"{a.get('message')} (severity: {a.get('severity')})")
+    else:
+        st.info("No active alerts.")
+
+    if history:
+        st.markdown("**Recent alert history:**")
+        for h in history[:5]:
+            st.write(f"- {h.get('message')} (severity: {h.get('severity')})")
+else:
+    st.warning("Failed to load alerts.")
+
+st.markdown("## ✅ Teaching Recommendations")
+rec_resp = requests.get(
+    f"{API_BASE}/instructor/recommendations",
+    params=base_params
+)
+if rec_resp.status_code == 200:
+    rec_data = rec_resp.json()
+    st.write(rec_data.get("recommendations", "No recommendations yet."))
+else:
+    st.warning("Failed to load recommendations.")
 
 
 # Display clusters
