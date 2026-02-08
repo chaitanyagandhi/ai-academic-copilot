@@ -1,5 +1,6 @@
 import os
 import uuid
+from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Form
 
 from app.services.pdf_extract import extract_pdf_text_by_page
@@ -13,6 +14,7 @@ UPLOAD_DIR = "backend/data/uploads"
 @router.post("/pdf")
 def ingest_pdf(
     course_id: str = Form(...),
+    lecture_id: Optional[str] = Form(None),
     source_name: str = Form(...),
     file: UploadFile = File(...),
 ):
@@ -46,10 +48,16 @@ def ingest_pdf(
 
         # we embed page into the source_name for citations
         page_source = f"{source_name} (page {page_num})"
-        total_chunks += course_store.add_chunks(course_id, page_source, chunks)
+        total_chunks += course_store.add_chunks(
+            course_id,
+            page_source,
+            chunks,
+            lecture_id=lecture_id,
+        )
 
     return {
         "course_id": course_id,
+        "lecture_id": lecture_id,
         "source_name": source_name,
         "pages_total": len(pages),
         "pages_ingested": pages_ingested,

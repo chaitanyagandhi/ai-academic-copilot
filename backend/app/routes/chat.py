@@ -17,6 +17,7 @@ Mode = Literal["normal", "simple", "practice"]
 
 class ChatRequest(BaseModel):
     course_id: str
+    lecture_id: Optional[str] = None
     user_id: str
     message: str
     mode: Mode = Field("normal")
@@ -69,8 +70,13 @@ def synthesize_answer(question: str, contexts: List[str], mode: str) -> str:
 
 @router.post("/", response_model=ChatResponse)
 def chat(req: ChatRequest):
-    log_question(req.course_id, req.user_id, req.message)
-    hits = course_store.search(req.course_id, req.message, k=5)
+    log_question(req.course_id, req.user_id, req.message, lecture_id=req.lecture_id)
+    hits = course_store.search(
+        req.course_id,
+        req.message,
+        k=5,
+        lecture_id=req.lecture_id,
+    )
     allowed_ids = {h.chunk_id for h in hits}
 
 

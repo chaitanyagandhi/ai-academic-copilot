@@ -10,6 +10,8 @@ env/
 venv/
 
 backend/data/uploads/
+backend/data/
+*.db
 
 
 # OS / editor
