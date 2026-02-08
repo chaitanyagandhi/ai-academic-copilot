@@ -1,10 +1,15 @@
 import os
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 def has_openai_key() -> bool:
     return bool(os.getenv("OPENAI_API_KEY"))
 
-def generate_answer_with_openai(question: str, contexts: List[str], mode: str) -> Optional[str]:
+def generate_answer_with_openai(
+    question: str,
+    contexts: List[str],
+    mode: str,
+    memory_turns: Optional[List[Dict[str, str]]] = None,
+) -> Optional[str]:
     """
     Returns a generated answer string if OpenAI is configured.
     Returns None if not configured (so we can fall back).
@@ -22,10 +27,17 @@ def generate_answer_with_openai(question: str, contexts: List[str], mode: str) -
 
     # Keep context short-ish for now (MVP). We’ll improve later.
     context_block = "\n\n".join(contexts[:4])
+    memory_block = ""
+    if memory_turns:
+        lines = []
+        for t in memory_turns[-6:]:
+            lines.append(f"{t['role'].capitalize()}: {t['content']}")
+        memory_block = "\n".join(lines)
 
     system = (
     "You are an academic tutor.\n"
     "Use ONLY the provided COURSE CONTEXT.\n"
+    "The recent conversation is for disambiguation only; do not use it as factual source.\n"
     "Every claim MUST include an inline citation in this exact format: [source_name | chunk_id].\n"
     "If the context does not contain the answer, say: "
     "'I don't have enough information in the course content to answer that.' "
@@ -44,6 +56,7 @@ def generate_answer_with_openai(question: str, contexts: List[str], mode: str) -
 
     user = (
     f"COURSE CONTEXT:\n{context_block}\n\n"
+    f"RECENT CONVERSATION (do not cite):\n{memory_block}\n\n"
     f"STUDENT QUESTION:\n{question}\n\n"
     f"INSTRUCTIONS:\n{style}\n\n"
     "Important: Put citations at the end of each sentence that depends on the context.\n"
@@ -107,3 +120,43 @@ def fix_citations_with_openai(original_answer: str, contexts: List[str]) -> Opti
 
     return resp.choices[0].message.content
 
+
+def generate_recommendations_with_openai(
+    cluster_summary: str,
+    contexts: List[str],
+) -> Optional[str]:
+    if not has_openai_key():
+        return None
+
+    try:
+        from openai import OpenAI
+    except Exception:
+        return None
+
+    client = OpenAI()
+    context_block = "\n\n".join(contexts[:4])
+
+    system = (
+        "You are an expert teaching assistant.\n"
+        "Use ONLY the provided COURSE CONTEXT.\n"
+        "Produce 2-4 actionable teaching recommendations for the instructor.\n"
+        "Every recommendation sentence MUST include an inline citation: [source_name | chunk_id].\n"
+        "Do NOT use any knowledge outside the context."
+    )
+
+    user = (
+        f"CLUSTER SUMMARY:\n{cluster_summary}\n\n"
+        f"COURSE CONTEXT:\n{context_block}\n\n"
+        "Return recommendations as short bullet points."
+    )
+
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        temperature=0.2,
+    )
+
+    return resp.choices[0].message.content

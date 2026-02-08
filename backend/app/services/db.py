@@ -83,6 +83,43 @@ questions = Table(
     Column("timestamp", Float, nullable=False),
 )
 
+student_concepts = Table(
+    "student_concepts",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("course_id", String, ForeignKey("courses.course_id"), nullable=False),
+    Column("lecture_id", String, nullable=True),
+    Column("user_id", String, nullable=False),
+    Column("concept", String, nullable=False),
+    Column("count", Integer, nullable=False),
+    Column("confusion_sum", Float, nullable=False),
+    Column("last_updated", Float, nullable=False),
+)
+
+conversation_turns = Table(
+    "conversation_turns",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("course_id", String, ForeignKey("courses.course_id"), nullable=False),
+    Column("lecture_id", String, nullable=True),
+    Column("user_id", String, nullable=False),
+    Column("role", String, nullable=False),
+    Column("content", Text, nullable=False),
+    Column("timestamp", Float, nullable=False),
+)
+
+alerts = Table(
+    "alerts",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("course_id", String, ForeignKey("courses.course_id"), nullable=False),
+    Column("lecture_id", String, nullable=True),
+    Column("type", String, nullable=False),
+    Column("message", Text, nullable=False),
+    Column("severity", String, nullable=False),
+    Column("created_at", Float, nullable=False),
+)
+
 
 def init_db() -> None:
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)

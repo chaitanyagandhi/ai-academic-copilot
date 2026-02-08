@@ -1,5 +1,7 @@
 from typing import Dict
 
+from app.services.confusion_model import predict_confusion
+
 CONFUSION_KEYWORDS = [
     "why",
     "how",
@@ -15,8 +17,12 @@ CONFUSION_KEYWORDS = [
 def compute_confusion(question: str) -> float:
     """
     Returns a confusion score between 0 and 1.
-    Simple heuristic for MVP.
+    Uses ML model if available; falls back to heuristic.
     """
+    model_score = predict_confusion(question)
+    if model_score is not None:
+        return max(0.0, min(model_score, 1.0))
+
     q = question.lower()
     score = 0.0
 

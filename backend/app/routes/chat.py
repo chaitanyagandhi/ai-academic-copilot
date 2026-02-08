@@ -7,6 +7,8 @@ from app.services.llm import generate_answer_with_openai
 from app.services.citation_guard import needs_fix, all_citations_valid
 from app.services.llm import generate_answer_with_openai, fix_citations_with_openai
 from app.services.question_log import log_question
+from app.services.memory import add_turn, get_recent_turns
+from app.services.mastery import extract_concepts, update_student_mastery
 
 
 
@@ -70,7 +72,20 @@ def synthesize_answer(question: str, contexts: List[str], mode: str) -> str:
 
 @router.post("/", response_model=ChatResponse)
 def chat(req: ChatRequest):
-    log_question(req.course_id, req.user_id, req.message, lecture_id=req.lecture_id)
+    memory = get_recent_turns(
+        req.course_id,
+        req.user_id,
+        lecture_id=req.lecture_id,
+        limit=6,
+    )
+    confusion = log_question(req.course_id, req.user_id, req.message, lecture_id=req.lecture_id)
+    add_turn(
+        req.course_id,
+        req.user_id,
+        role="user",
+        content=req.message,
+        lecture_id=req.lecture_id,
+    )
     hits = course_store.search(
         req.course_id,
         req.message,
@@ -94,7 +109,18 @@ def chat(req: ChatRequest):
         for h in hits
     ]
 
-    llm_answer = generate_answer_with_openai(req.message, contexts, req.mode)
+    # Update student mastery from question + retrieved context
+    concept_texts = [req.message] + [h.text for h in hits[:3]]
+    concepts = extract_concepts(concept_texts)
+    update_student_mastery(
+        req.course_id,
+        req.user_id,
+        concepts,
+        confusion,
+        lecture_id=req.lecture_id,
+    )
+
+    llm_answer = generate_answer_with_openai(req.message, contexts, req.mode, memory_turns=memory)
 
     # If LLM is enabled, enforce citation rules
     if llm_answer is not None:
@@ -115,8 +141,27 @@ def chat(req: ChatRequest):
         note = "LLM not configured: retrieval + template fallback"
 
 
+    add_turn(
+        req.course_id,
+        req.user_id,
+        role="assistant",
+        content=answer,
+        lecture_id=req.lecture_id,
+    )
+
     return ChatResponse(
         answer=answer,
         citations=citations,
         note=note,
     )
+
+
+@router.get("/memory")
+def get_memory(course_id: str, user_id: str, lecture_id: str | None = None):
+    turns = get_recent_turns(course_id, user_id, lecture_id=lecture_id, limit=6)
+    return {
+        "course_id": course_id,
+        "user_id": user_id,
+        "lecture_id": lecture_id,
+        "turns": turns,
+    }

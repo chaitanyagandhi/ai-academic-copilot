@@ -28,6 +28,7 @@ def log_question(
                 timestamp=ts,
             )
         )
+    return confusion
 
 
 def get_questions(course_id: str, lecture_id: Optional[str] = None) -> List[dict]:
